@@ -1,0 +1,34 @@
+{
+  "name": "kosher-bluepay",
+  "version": "1.0.0",
+  "description": "A node.js interface to the BluePay api. Where neatness and correctness counts.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha tests/**/*.js",
+    "docs": "jsdoc2md index.js > docs.md"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timemachine3030/kosher-bluepay.git"
+  },
+  "keywords": [
+    "bluepay",
+    "credit",
+    "card",
+    "payment",
+    "process"
+  ],
+  "author": "Daniel Lopretto <timemachine3030@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/timemachine3030/kosher-bluepay/issues"
+  },
+  "homepage": "https://github.com/timemachine3030/kosher-bluepay",
+  "dependencies": {
+    "q": "^1.0.1",
+    "request": "^2.44.0"
+  },
+  "devDependencies": {
+    "jsdoc-to-markdown": "^0.5.9"
+  }
+}
