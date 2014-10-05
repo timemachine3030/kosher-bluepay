@@ -16,7 +16,7 @@ var connection = bluepay.connect({
 
 connection
 .setCustomerInformation()
-.setCCInformation()
+.setCardInformation()
 .makeToken()
 .process()
 .then(function (status, transaction) {
@@ -43,7 +43,7 @@ or reuse a transaction token
 ```javascript
 // Clear the transaction specific data from connection
 connection.reset();
-// Load the transaction an complete the sale.
+// Load the transaction and complete the sale.
 connection.sale('1.99', token).process();
 ```
 

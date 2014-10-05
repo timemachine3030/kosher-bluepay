@@ -183,8 +183,7 @@ var Connection = {
      * transaction.
      *
      * @param {String} card
-     * @param {Mixed} expire, Must be a 4 digit number or string in the 
-     * format MMYY, or a Date object.
+     * @param {Mixed} expire, Must be a 4 digit number or string in the format MMYY, or a Date object.
      * @param {String} cvv2
      * @return {Connection}
      */
