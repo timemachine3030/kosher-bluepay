@@ -1,6 +1,8 @@
 'use strict';
 var _ = require('lodash');
+var crypto = require('crypto');
 var Q = require('q');
+var querystring = require('querystring');
 var request = require('request');
 
 /**
@@ -56,9 +58,10 @@ var exemplar = {
     },
 
     rebilling: {
+        id: 'REBILL_ID',
         doRebill: 'REBILLING',
         startDate: 'REB_FIRST_DATE',
-        nextDate: '',
+        nextDate: 'NEXT_DATE',
         expression: 'REB_EXPR',
         cycles: 'REB_CYCLES',
         amount: 'REB_AMOUNT',
@@ -68,17 +71,25 @@ var exemplar = {
     },
 
     response: {
-        transID: 'RRNO',
+        transId: 'RRNO',
         maskedAccount: 'PAYMENT_ACCOUNT',
         cardType: 'CARD_TYPE',
-        customerBank: 'BANK_NAME'
+        customerBank: 'BANK_NAME',
+        message: 'MESSAGE',
+        status: 'Result',
+        rebillId: 'rebill_id',
+        templateId: 'template_id',
+        masterId: 'id',
+        paymentType: 'payment_type',
+        type: 'trans_type',
+        amount: 'amount'
     }
 };
 
 /**
- * @class Connection
+ * @class BluePay
  */
-var Connection = {
+var BluePay = {
     /**
      * Creates an AUTH transaction
      *
@@ -104,7 +115,7 @@ var Connection = {
     capture: function (masterId, amount) {
         this.transaction.amount = amount;
         this.transaction.masterId = masterId;
-        this.transaciton.type = 'CAPTURE';
+        this.transaction.type = 'CAPTURE';
 
         return this;
     },
@@ -250,7 +261,8 @@ var Connection = {
      * @param {...String} keys
      * @return {Connection}
      */
-    reset: function (keys) {
+    reset: function () {
+        var keys;
         if (arguments.length) {
             keys = Array.prototype.slice.call(arguments, 0);
         } else {
@@ -261,6 +273,137 @@ var Connection = {
         });
 
         return this;
+    },
+
+    /**
+     * Updates the Transaction type and adjusts the rebilling parameters
+     *
+     * @param {String} id, The 12-digit ID of the Rebilling to modify/view
+     * @param {Date} next, Set the next rebill date to this date
+     * @param {String} expression
+     * @param {Number} cycles, Number of billings to complete.
+     * @param {Float} amount, Amount to charge for the each billing
+     * @return {Connection}
+     */
+    updateRebillingCycle: function (id, next, expression, cycle, amount) {
+        this.transaction.type = 'SET';
+        this.rebilling.id = id;
+        this.rebilling.nextDate = next;
+        this.rebilling.expression = expression;
+        this.rebilling.cycle = cycle;
+        this.rebilling.amount = amount;
+
+        return this;
+    },
+
+    /**
+     * Sets the rebilling template.
+     *
+     * @param {String} id, The 12-digit ID of the template for this rebilling.
+     * @return {Connection}
+     */
+    setRebillingTemplate: function (id) {
+        this.rebilling.templateId = id;
+
+        return this;
+    },
+
+    /**
+     * Cancel a rebilling
+     *
+     * @param {String} id, The 12-digit ID specifying this rebilling.
+     * @return {Connection}
+     */
+    cancelRebilling: function (id) {
+        this.transaction.type = 'SET';
+        this.rebilling.status = 'stopped';
+        this.rebilling.id = id;
+
+        return this;
+    },
+
+    /**
+     * Get the current status of a rebilling
+     *
+     * @param {String} id, The 12-digit ID specifying this rebilling.
+     * @return {Connection}
+     */
+    getRebillingStatus: function (id) {
+        this.transaction.type = 'GET';
+        this.rebilling.id = id;
+
+        return this;
+    },
+
+    /**
+     * Process the transaction on the current connection.
+     *
+     */
+    process: function () {
+        var deferred = Q.defer();
+        var parameters = {};
+        var self = this;
+        var url = 'https://secure.bluepay.com/interfaces/bp10emu';
+        function copyConfig(item) {
+            self[item].forEach(function (key) {
+                parameters[exemplar[item][key]] = self[item][key];
+            });
+
+        }
+
+        parameters.mode = this.mode;
+
+        if (this.transaction.type === 'SET' && this.transaction.type === 'GET') {
+            copyConfig('transaction');
+            copyConfig('customer');
+
+            if (this.transaction.paymentType === 'CREDIT') {
+                copyConfig('credit');
+            } else {
+                copyConfig('ach');
+            }
+
+            if (this.rebilling.doRebill) {
+                copyConfig('rebilling');
+            }
+            parameters.TAMPER_PROOF_SEAL = this.seal(parameters);
+            url = 'https://secure.bluepay.com/interfaces/bp10emu';
+        } else {
+            parameters.ACCOUNT_ID = this.accountId;
+            copyConfig('transaction');
+            copyConfig('rebilling');
+            parameters.TAMPER_PROOF_SEAL = this.seal(parameters);
+            url = 'https://secure.bluepay.com/interfaces/bp20rebadmin';
+        }
+
+        request.post(url, parameters, function (err, response, body) {
+            var result;
+            if (err) {
+                return deferred.reject(err);
+            }
+            result = querystring.parse(body);
+            exemplar.response.forEach(function (key) {
+                self.response[exemplar.response[key]] = result[key];
+            });
+        });
+    },
+
+    /**
+     * Creates a tamper proof seal for the message
+     *
+     * @param {Object} parameters
+     * @return {String}
+     */
+    seal: function (parameters) {
+      var md5 = crypto.createHash('md5');
+      md5.update(parameters.SECRET_KEY);
+      md5.update(parameters.ACCOUNT_ID);
+      md5.update(parameters.TRANS_TYPE);
+      md5.update(parameters.AMOUNT);
+      md5.update(parameters.MASTER_ID || '');
+      md5.update(parameters.NAME1 || '');
+      md5.update(parameters.PAYMENT_ACCOUNT);
+      return md5.digest('hex');
     }
 };
 
@@ -275,7 +418,7 @@ var factory = {
         if (!options.hasOwnProperty('accountId') || !options.hasOwnProperty('secretKey')) {
             throw new Error('Must define AccountId and SecretKey when creating a new BluePay connection');
         }
-        var connection =  Object.create(Connection, {
+        var connection =  Object.create(BluePay, {
             /**
              * BluePay account id
              */
@@ -315,7 +458,7 @@ var factory = {
         ACH: 'ACH',
     },
 
-    transacitons: {
+    transactions: {
         AUTH: 'AUTH',
         SALE: 'SALE',
         CAPTURE: 'CAPTURE',
