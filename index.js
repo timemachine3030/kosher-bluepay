@@ -39,7 +39,7 @@ var exemplar = {
         routingNum: 'ACH_ROUTING'
     },
 
-    tranction: {
+    transaction: {
         amount: 'AMOUNT',
         paymentType: 'PAYMENT_TYPE',
         type: 'TRANSACTION_TYPE',
@@ -89,6 +89,7 @@ var exemplar = {
 /**
  * @class BluePay
  */
+//function BluePay () {}
 var BluePay = {
     /**
      * Creates an AUTH transaction
@@ -270,7 +271,7 @@ var BluePay = {
         }
         keys.forEach(function (key) {
             this[key] = {};
-        });
+        }.bind(this));
 
         return this;
     },
@@ -385,7 +386,11 @@ var BluePay = {
             exemplar.response.forEach(function (key) {
                 self.response[exemplar.response[key]] = result[key];
             });
+
+            deferred.resolve(self.response);
         });
+
+        return deferred.promise;
     },
 
     /**
@@ -445,6 +450,7 @@ var factory = {
         });
 
 
+        connection.reset();
         return connection;
     },
 
@@ -464,6 +470,10 @@ var factory = {
         CAPTURE: 'CAPTURE',
         REFUND: 'REFUND',
         REBCANCEL: 'REBCANCEL'
+    },
+    status: {
+        APPROVED: '1',
+        DECLINED: '0'
     }
 };
 

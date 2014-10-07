@@ -25,10 +25,13 @@
   },
   "homepage": "https://github.com/timemachine3030/kosher-bluepay",
   "dependencies": {
+    "lodash": "^2.4.1",
     "q": "^1.0.1",
     "request": "^2.44.0"
   },
   "devDependencies": {
-    "jsdoc-to-markdown": "^0.5.9"
+    "chai": "^1.9.2",
+    "jsdoc-to-markdown": "^0.5.9",
+    "mocha": "^1.21.4"
   }
 }

@@ -7,8 +7,8 @@ Why `kosher-`? This software does its best to conform to all the holy best pract
 Send the Credit Card information and returns a Transaction ID, which you can use as a token for future transactions. 
 
 ```javascript
-var bluepay = require('kosher-bluepay');
-var connection = bluepay.connect({
+var BluePay = require('kosher-bluepay');
+var connection = BluePay.connect({
     accountId: 'ACCOUNT_ID',
     secretKey: 'SECRET_KEY',
     mode: 'TEST'
